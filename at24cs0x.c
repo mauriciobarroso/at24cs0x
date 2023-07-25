@@ -47,6 +47,10 @@
 static const char *TAG = "at24cs0x";
 
 /* Private function prototypes -----------------------------------------------*/
+static int8_t i2c_read(uint8_t reg_addr, uint8_t *reg_data,
+		uint32_t data_len, void *intf);
+static int8_t i2c_write(uint8_t reg_addr, const uint8_t *reg_data,
+		uint32_t data_len, void *intf);
 
 /* Exported functions definitions --------------------------------------------*/
 /**
@@ -85,7 +89,7 @@ esp_err_t at24cs0x_write_byte(at24cs0x_t *const me, uint8_t data_addr, uint8_t *
 	/* Variable to return */
 	esp_err_t ret = ESP_OK;
 
-	int8_t rslt = me->i2c_dev->write(data_addr, data, 1, me->i2c_dev);
+	int8_t rslt = i2c_write(data_addr, data, 1, me->i2c_dev);
 
 	if (rslt != I2C_BUS_OK) {
 		ESP_LOGE(TAG, "Failed to write a byte in 0x%02X", data_addr);
@@ -129,7 +133,7 @@ esp_err_t at24cs0x_read_random(at24cs0x_t *const me, uint8_t data_addr, uint8_t 
 	esp_err_t ret = ESP_OK;
 
 	/**/
-	int8_t rslt = me->i2c_dev->read(data_addr, data, 1, me->i2c_dev);
+	int8_t rslt = i2c_read(data_addr, data, 1, me->i2c_dev);
 
 	if (rslt != I2C_BUS_OK) {
 		ESP_LOGE(TAG, "Failed to read a byte in 0x%02X", data_addr);
@@ -160,7 +164,7 @@ esp_err_t at24cs0x_read_serial_number(at24cs0x_t *const me) {
 
 	/**/
 	me->i2c_dev->addr = AT24CS0X_SN_I2C_ADDRESS; /* todo: write function to change the device address */
-	int8_t rslt = me->i2c_dev->read(0x80, me->serial_number, AT24CS0X_SN_SIZE, me->i2c_dev);
+	int8_t rslt = i2c_read(0x80, me->serial_number, AT24CS0X_SN_SIZE, me->i2c_dev);
 	me->i2c_dev->addr = AT24CS0X_I2C_ADDRESS;
 
 	if (rslt != I2C_BUS_OK) {
@@ -173,5 +177,18 @@ esp_err_t at24cs0x_read_serial_number(at24cs0x_t *const me) {
 }
 
 /* Private function definitions ----------------------------------------------*/
+static int8_t i2c_read(uint8_t reg_addr, uint8_t *reg_data,
+		uint32_t data_len, void *intf) {
+	i2c_bus_dev_t *dev = (i2c_bus_dev_t *)intf;
+
+	return dev->read(&reg_addr, 1, reg_data, data_len, intf);
+}
+
+static int8_t i2c_write(uint8_t reg_addr, const uint8_t *reg_data,
+		uint32_t data_len, void *intf) {
+	i2c_bus_dev_t *dev = (i2c_bus_dev_t *)intf;
+
+	return dev->write(&reg_addr, 1, reg_data, data_len, intf);
+}
 
 /***************************** END OF FILE ************************************/
