@@ -46,23 +46,31 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C2 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
+#define ESP32_TARGET
+#endif
+
+#ifdef ESP32_TARGET
 #include "driver/i2c_master.h"
+#else
+#include "main.h"
+#endif /* ESP32_TARGET */
 
 /* Exported Macros -----------------------------------------------------------*/
-#define AT24CS0X_SN_SIZE				16		/*!< Serial number size in bytes */
+#define AT24CS0X_SN_SIZE		16		/*!< Serial number size in bytes */
 
-#define AT24CS0X_I2C_ADDRESS		0x50	/*!< Slave address for AT24CS0X */
-#define AT24CS0X_I2C_ADDRESS_SN	0x58	/*!< Slave address for AT24CS0X */
+#define AT24CS0X_I2C_ADDRESS	0x50	/*!< Slave address for AT24CS0X */
+#define AT24CS0X_I2C_ADDRESS_SN	0x58	/*!< Slave address for AT24CS0X serial number */
 
-#define AT24CS0X_PAGE_SIZE			8			/*!< EEPROM page size in bytes */
-#define AT24CS01_MAX_SIZE				128		/*!< EEPROM page size in bytes */
-#define AT24CS02_MAX_SIZE				256		/*!< EEPROM page size in bytes */
-#define AT24CS01_PAGES_NUM			AT24CS01_MAX_SIZE / \
-																AT24CS0X_PAGE_SIZE	/*!< EEPROM page size in bytes */
-#define AT24CS02_PAGES_NUM			AT24CS02_MAX_SIZE / \
-																AT24CS0X_PAGE_SIZE	/*!< EEPROM page size in bytes */
+#define AT24CS0X_PAGE_SIZE		8			/*!< EEPROM page size in bytes */
+#define AT24CS01_MAX_SIZE		128		/*!< EEPROM page size in bytes */
+#define AT24CS02_MAX_SIZE		256		/*!< EEPROM page size in bytes */
+#define AT24CS01_PAGES_NUM		AT24CS01_MAX_SIZE / \
+								AT24CS0X_PAGE_SIZE	/*!< EEPROM page size in bytes */
+#define AT24CS02_PAGES_NUM		AT24CS02_MAX_SIZE / \
+								AT24CS0X_PAGE_SIZE	/*!< EEPROM page size in bytes */
 
-#define AT24CS0X_WRITE_TIME			5	/*!< EEPROM write time in ms */
+#define AT24CS0X_WRITE_TIME_MS	5	/*!< EEPROM write time in ms */
 
 /* Exported typedef ----------------------------------------------------------*/
 /*
@@ -73,28 +81,41 @@ typedef enum {
 	AT24CS02_MODEL
 } at24cs0x_model_e;
 
+#ifndef ESP32_TARGET
+typedef struct {
+	uint8_t dev_addr;
+	I2C_HandleTypeDef *i2c_handle;
+} i2c_stm32_dev_t;
+#endif /* ESP32_TARGET */
+
 /*
  * @brief AT24CS0x device structure
  */
 typedef struct {
+#ifdef ESP32_TARGET
 	i2c_master_dev_handle_t i2c_dev;	/*!< I2C device handle */
 	i2c_master_dev_handle_t i2c_dev_sn;	/*!< I2C device handle */
+#else
+	i2c_stm32_dev_t *i2c_dev;
+	i2c_stm32_dev_t *i2c_dev_sn;
+#endif /* ESP32_TARGET */
 	at24cs0x_model_e model;
-	uint8_t word_addr_curr; /*!< I2C device handle */
+	uint8_t word_addr_curr;
 } at24cs0x_t;
 
 /* Exported variables --------------------------------------------------------*/
 /**
  * @brief Function to initialize a AT24CS0x instance
  *
- * @param me             : Pointer to a structure instance of at24cs0x_t
- * @param i2c_bus_handle : Handle to the I2C bus to add this device
- * @param model          : AT24CS0x model, can be AT24CS01 or AT24CS02
- * @param addr           : I2C device address
+ * @param me         : Pointer to a structure instance of at24cs0x_t
+ * @param i2c_handle : Pointer to a structure with the data to initialize the
+ * 					   I2C device
+ * @param model      : AT24CS0x model, can be AT24CS01 or AT24CS02
+ * @param addr       : I2C device address
  *
  * @return ESP_OK on success
  */
-esp_err_t at24cs0x_init(at24cs0x_t *const me, i2c_master_bus_handle_t i2c_bus_handle,
+int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle,
 		uint8_t dev_addr, at24cs0x_model_e model);
 
 /**
@@ -107,7 +128,7 @@ esp_err_t at24cs0x_init(at24cs0x_t *const me, i2c_master_bus_handle_t i2c_bus_ha
  *
  * @return ESP_OK on success
  */
-esp_err_t at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr,
+int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr,
 		uint8_t *data, uint32_t data_len);
 
 /**
@@ -120,7 +141,7 @@ esp_err_t at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr,
  *
  * @return ESP_OK on success
  */
-esp_err_t at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr,
+int at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr,
 		uint8_t *data, uint32_t data_len);
 
 /**
@@ -132,7 +153,7 @@ esp_err_t at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr,
  *
  * @return ESP_OK on success
  */
-esp_err_t at24cs0x_read_serial_number(at24cs0x_t *const me, uint8_t *serial_number);
+int at24cs0x_read_serial_number(at24cs0x_t *const me, uint8_t *serial_number);
 
 /* Exported functions prototypes ---------------------------------------------*/
 
