@@ -90,7 +90,7 @@ static void delay_ms(uint32_t time_ms);
  * @brief Function to initialize a AT24CS0x instance
  */
 int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
-		at24cs0x_model_e model)
+		at24cs0x_model_t model)
 {
 	/* Variable to return error code */
 	int ret = 0;
@@ -103,7 +103,7 @@ int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
 	};
 
 	if (i2c_master_bus_add_device((i2c_master_bus_handle_t)i2c_handle,
-			&i2c_dev_conf, &me->i2c_dev) != 0) {
+			&i2c_dev_conf, &me->i2c_dev.handle) != 0) {
 		ESP_LOGE(TAG, "Failed to add device to I2C bus");
 		return ret;
 	}
@@ -116,23 +116,11 @@ int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
 		return ret;
 	}
 #else
-	me->i2c_dev = malloc(sizeof(i2c_stm32_dev_t));
+	me->i2c_dev.handle = (I2C_HandleTypeDef *)i2c_handle;
+	me->i2c_dev.addr = AT24CS0X_I2C_ADDRESS;
 
-	if (me->i2c_dev == NULL) {
-		return -1;
-	}
-
-	me->i2c_dev->i2c_handle = (I2C_HandleTypeDef *)i2c_handle;
-	me->i2c_dev->dev_addr = AT24CS0X_I2C_ADDRESS;
-
-	me->i2c_dev_sn = malloc(sizeof(i2c_stm32_dev_t));
-
-	if (me->i2c_dev_sn == NULL) {
-		return -1;
-	}
-
-	me->i2c_dev_sn->i2c_handle = (I2C_HandleTypeDef *)i2c_handle;
-	me->i2c_dev_sn->dev_addr = AT24CS0X_I2C_ADDRESS_SN;
+	me->i2c_dev_sn.handle = (I2C_HandleTypeDef *)i2c_handle;
+	me->i2c_dev_sn.addr = AT24CS0X_I2C_ADDRESS_SN;
 #endif /* ESP32_TARGET */
 
 	/* Return 0 */
@@ -166,7 +154,7 @@ int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr, uint8_t *data,
 		 * the current page */
 		if (data_len_rem > page_len_rem) {
 			if (at24cs0x_reg_write(addr_curr, data + data_index, page_len_rem,
-					me->i2c_dev) != 0) {
+					&me->i2c_dev) != 0) {
 				return -1;
 			}
 
@@ -177,7 +165,7 @@ int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr, uint8_t *data,
 		}
 		else {
 			if (at24cs0x_reg_write(addr_curr, data + data_index, data_len_rem,
-					me->i2c_dev) != 0) {
+					&me->i2c_dev) != 0) {
 				return -1;
 			}
 
@@ -208,7 +196,7 @@ int at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr, uint8_t *data,
 	}
 
 	/* Read the requested data */
-	if (at24cs0x_reg_read(data_addr, data, data_len, me->i2c_dev) < 0) {
+	if (at24cs0x_reg_read(data_addr, data, data_len, &me->i2c_dev) < 0) {
 		return -1;
 	}
 
@@ -225,7 +213,7 @@ int at24cs0x_read_serial_number(at24cs0x_t *const me, uint8_t *serial_number)
 	int ret = 0;
 
 	/* Read serial number */
-	if (at24cs0x_reg_read(0x80, serial_number, AT24CS0X_SN_SIZE, me->i2c_dev_sn)
+	if (at24cs0x_reg_read(0x80, serial_number, AT24CS0X_SN_SIZE, &me->i2c_dev_sn)
 			< 0) {
 		return -1;
 	}
@@ -241,17 +229,16 @@ int at24cs0x_read_serial_number(at24cs0x_t *const me, uint8_t *serial_number)
 static int8_t at24cs0x_reg_read(uint8_t addr, uint8_t *data, uint32_t data_len,
 		void *intf)
 {
-#ifdef ESP32_TARGET
-	i2c_master_dev_handle_t i2c_dev = (i2c_master_dev_handle_t)intf;
+	at24cs0x_i2c_t *i2c_dev = (at24cs0x_i2c_t *)intf;
 
-	if (i2c_master_transmit_receive(i2c_dev, &addr, 1, data, data_len, -1) != 0) {
+#ifdef ESP32_TARGET
+	if (i2c_master_transmit_receive(i2c_dev->handle, &addr, 1, data, data_len,
+			-1) != 0) {
 		return -1;
 	}
 #else
-	i2c_stm32_dev_t *i2c_dev = (i2c_stm32_dev_t *)intf;
-
-	if (HAL_I2C_Master_Receive(i2c_dev->i2c_handle,
-			(i2c_dev->dev_addr << 1) | 0x01, data, data_len, 100) > 0) {
+	if (HAL_I2C_Master_Receive(i2c_dev->handle, (i2c_dev->addr << 1) | 0x01,
+			data, data_len, 100) > 0) {
 		return -1;
 	}
 #endif
@@ -266,13 +253,13 @@ static int8_t at24cs0x_reg_read(uint8_t addr, uint8_t *data, uint32_t data_len,
 static int8_t at24cs0x_reg_write(uint8_t addr, const uint8_t *data,
 		uint32_t data_len, void *intf)
 {
-
 	uint8_t buffer[32] = {0};
 	uint8_t addr_len = sizeof(addr);
 
 	/* Copy the register address to buffer */
 	for (uint8_t i = 0; i < addr_len; i++) {
-		buffer[i] = (addr & (0xFF << ((addr_len - 1 - i) * 8))) >> ((addr_len - 1 - i) * 8);
+		buffer[i] = (addr & (0xFF << ((addr_len - 1 - i) * 8)))
+				>> ((addr_len - 1 - i) * 8);
 	}
 
 	/* Copy the data to buffer */
@@ -281,16 +268,15 @@ static int8_t at24cs0x_reg_write(uint8_t addr, const uint8_t *data,
 	}
 
 	/* Transmit buffer */
-#ifdef ESP32_TARGET
-	i2c_master_dev_handle_t i2c_dev = (i2c_master_dev_handle_t)intf;
+	at24cs0x_i2c_t *i2c_dev = (at24cs0x_i2c_t *)intf;
 
-	if (i2c_master_transmit(i2c_dev, buffer, addr_len + data_len, -1) != 0) {
+#ifdef ESP32_TARGET
+	if (i2c_master_transmit(i2c_dev->handle, buffer, addr_len + data_len, -1)
+			!= 0) {
 		return -1;
 	}
 #else
-	i2c_stm32_dev_t *i2c_dev = (i2c_stm32_dev_t *)intf;
-
-	if (HAL_I2C_Master_Transmit(i2c_dev->i2c_handle, (i2c_dev->dev_addr << 1),
+	if (HAL_I2C_Master_Transmit(i2c_dev->handle, (i2c_dev->addr << 1),
 			buffer, addr_len + data_len, 100) > 0) {
 		return -1;
 	}

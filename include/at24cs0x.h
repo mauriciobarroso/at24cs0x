@@ -77,29 +77,26 @@ extern "C" {
  * @brief AT24CS0x device structure
  */
 typedef enum {
-	AT24CS01_MODEL,
-	AT24CS02_MODEL
-} at24cs0x_model_e;
+	AT24CS0X_MODEL_01,
+	AT24CS0X_MODEL_02,
+} at24cs0x_model_t;
 
-#ifndef ESP32_TARGET
 typedef struct {
-	uint8_t dev_addr;
-	I2C_HandleTypeDef *i2c_handle;
-} i2c_stm32_dev_t;
+#ifdef ESP32_TARGET
+	i2c_master_dev_handle_t handle;
+#else
+	uint8_t addr;
+	I2C_HandleTypeDef *handle;
 #endif /* ESP32_TARGET */
+} at24cs0x_i2c_t;
 
 /*
  * @brief AT24CS0x device structure
  */
 typedef struct {
-#ifdef ESP32_TARGET
-	i2c_master_dev_handle_t i2c_dev;	/*!< I2C device handle */
-	i2c_master_dev_handle_t i2c_dev_sn;	/*!< I2C device handle */
-#else
-	i2c_stm32_dev_t *i2c_dev;
-	i2c_stm32_dev_t *i2c_dev_sn;
-#endif /* ESP32_TARGET */
-	at24cs0x_model_e model;
+	at24cs0x_i2c_t i2c_dev;
+	at24cs0x_i2c_t i2c_dev_sn;
+	at24cs0x_model_t model;
 	uint8_t word_addr_curr;
 } at24cs0x_t;
 
@@ -116,7 +113,7 @@ typedef struct {
  * @return ESP_OK on success
  */
 int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle,
-		uint8_t dev_addr, at24cs0x_model_e model);
+		uint8_t dev_addr, at24cs0x_model_t model);
 
 /**
  * @brief Function to write a specific quantity of words to EEPROM
