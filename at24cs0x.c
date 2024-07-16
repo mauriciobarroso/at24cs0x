@@ -37,7 +37,6 @@
 
 #ifdef ESP32_TARGET
 #include "esp_err.h"
-#include "esp_log.h"
 #include "esp_timer.h"
 #endif /* ESP32_TARGET */
 
@@ -104,7 +103,6 @@ int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
 
 	if (i2c_master_bus_add_device((i2c_master_bus_handle_t)i2c_handle,
 			&i2c_dev_conf, &me->i2c_dev.handle) != 0) {
-		ESP_LOGE(TAG, "Failed to add device to I2C bus");
 		return ret;
 	}
 
@@ -112,7 +110,6 @@ int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
 
 	if (i2c_master_bus_add_device((i2c_master_bus_handle_t)i2c_handle,
 			&i2c_dev_conf, &me->i2c_dev_sn) != 0) {
-		ESP_LOGE(TAG, "Failed to add device to I2C bus");
 		return ret;
 	}
 #else
@@ -138,7 +135,6 @@ int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr, uint8_t *data,
 
 	/* Check if the data to write is greater than the available memory */
 	if (data_len > (0xFF - data_addr + 1)) {
-//		ESP_LOGE(TAG, "The data to be written is greater than the available memory");
 		return -1;
 	}
 
@@ -191,7 +187,6 @@ int at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr, uint8_t *data,
 
 	/* Check if the data to write is greater than the available memory */
 	if (data_len > (0xFF - data_addr + 1)) {
-		ESP_LOGE(TAG, "The data to be read is greater than the available memory");
 		return -1;
 	}
 
