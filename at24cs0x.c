@@ -48,7 +48,6 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-static const char *TAG = "at24cs0x";
 
 /* Private function prototypes -----------------------------------------------*/
 /**
@@ -109,7 +108,7 @@ int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
 	i2c_dev_conf.device_address = AT24CS0X_I2C_ADDRESS_SN;
 
 	if (i2c_master_bus_add_device((i2c_master_bus_handle_t)i2c_handle,
-			&i2c_dev_conf, &me->i2c_dev_sn) != 0) {
+			&i2c_dev_conf, &me->i2c_dev_sn.handle) != 0) {
 		return ret;
 	}
 #else
