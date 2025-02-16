@@ -37,7 +37,6 @@
 
 #ifdef ESP32_TARGET
 #include "esp_err.h"
-#include "esp_timer.h"
 #endif /* ESP32_TARGET */
 
 /* Private macros ------------------------------------------------------------*/
