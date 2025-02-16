@@ -76,22 +76,23 @@ static int8_t at24cs0x_reg_read(uint8_t addr, uint8_t *data, uint32_t data_len,
 static int8_t at24cs0x_reg_write(uint8_t addr, const uint8_t *data,
 		uint32_t data_len, void *intf);
 
-/**
- * @brief Function that implements a mili seconds delay
- *
- * @param time_ms: Time in us to delay
- */
-static void delay_ms(uint32_t time_ms);
-
 /* Exported functions definitions --------------------------------------------*/
 /**
  * @brief Function to initialize a AT24CS0x instance
  */
-int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr,
-		at24cs0x_model_t model)
+int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle, uint8_t dev_addr, 
+	at24cs0x_model_t model, void (* delay_ms)(uint32_t))
 {
 	/* Variable to return error code */
 	int ret = 0;
+	
+	/* Check custom delay_ms and fill field */
+	if (delay_ms == NULL) {
+		return -1;
+	}
+	
+	me->delay_ms = delay_ms;
+
 
 #ifdef ESP32_TARGET
 	/* Add device to I2C bus */
@@ -168,7 +169,7 @@ int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr, uint8_t *data,
 		}
 
 		/* Time to write the data */
-		delay_ms(AT24CS0X_WRITE_TIME_MS);
+		me->delay_ms(AT24CS0X_WRITE_TIME_MS);
 	} while (data_len_rem > 0);
 
 	/* Return 0 */
@@ -277,33 +278,6 @@ static int8_t at24cs0x_reg_write(uint8_t addr, const uint8_t *data,
 #endif
 
 	return 0;
-}
-
-/**
- * @brief Function that implements a mili seconds delay
- */
-static void delay_ms(uint32_t time_ms)
-{
-#ifdef ESP32_TARGET
-	uint64_t m = (uint64_t)esp_timer_get_time();
-
-	uint32_t period_us = time_ms * 1000;
-	if (period_us) {
-		uint64_t e = (m + period_us);
-
-		if (m > e) { /* overflow */
-			while ((uint64_t)esp_timer_get_time() > e) {
-				NOP();
-			}
-		}
-
-		while ((uint64_t)esp_timer_get_time() < e) {
-			NOP();
-		}
-	}
-#else
-  HAL_Delay(time_ms);
-#endif /* ESP32_TARGET */
 }
 
 /***************************** END OF FILE ************************************/

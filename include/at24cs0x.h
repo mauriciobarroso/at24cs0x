@@ -46,7 +46,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C2 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C2 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32P4 || CONFIG_IDF_TARGET_ESP32C5
 #define ESP32_TARGET
 #endif
 
@@ -98,6 +98,7 @@ typedef struct {
 	at24cs0x_i2c_t i2c_dev_sn;
 	at24cs0x_model_t model;
 	uint8_t word_addr_curr;
+	void (* delay_ms)(uint32_t);
 } at24cs0x_t;
 
 /* Exported variables --------------------------------------------------------*/
@@ -109,11 +110,12 @@ typedef struct {
  * 					   I2C device
  * @param model      : AT24CS0x model, can be AT24CS01 or AT24CS02
  * @param addr       : I2C device address
+ * @param delay_ms   : Pointer to custom delay function in ms
  *
- * @return ESP_OK on success
+ * @return 0 on success
  */
 int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle,
-		uint8_t dev_addr, at24cs0x_model_t model);
+		uint8_t dev_addr, at24cs0x_model_t model, void (* delay_ms)(uint32_t));
 
 /**
  * @brief Function to write a specific quantity of words to EEPROM
@@ -123,7 +125,7 @@ int at24cs0x_init(at24cs0x_t *const me, void *i2c_handle,
  * @param data      : Data to write
  * @param data_len  : Data length in words (bytes)
  *
- * @return ESP_OK on success
+ * @return 0 on success
  */
 int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr,
 		uint8_t *data, uint32_t data_len);
@@ -136,7 +138,7 @@ int at24cs0x_write(at24cs0x_t *const me, uint8_t data_addr,
  * @param data      : Data to write
  * @param data_len  : Data length in words (bytes)
  *
- * @return ESP_OK on success
+ * @return 0 on success
  */
 int at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr,
 		uint8_t *data, uint32_t data_len);
@@ -148,7 +150,7 @@ int at24cs0x_read(at24cs0x_t *const me, uint8_t data_addr,
  * @param data_addr : Address to write data
  * @param data      : Data to write
  *
- * @return ESP_OK on success
+ * @return 0 on success
  */
 int at24cs0x_read_serial_number(at24cs0x_t *const me, uint8_t *serial_number);
 
